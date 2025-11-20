@@ -1,0 +1,15 @@
+logs/*.log
+*.tmp
+*.pid
+
+
+*.key
+*.conf
+
+**/config/*
+!docker/wireguard/config/
+
+.DS_Store
+.vscode/
+.idea/
+
