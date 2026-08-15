@@ -23,6 +23,8 @@ logs/*.log
 *.sqlite
 *.sqlite3
 data/
+# attack-sim run artifacts: manifests, copied eve.json, scorecards
+runs/
 
 # ── Editor / OS ──
 .DS_Store

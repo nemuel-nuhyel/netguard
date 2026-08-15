@@ -1,0 +1,37 @@
+{
+  "schema": "netguard-manifest/1",
+  "meta": {
+    "run_id": "fixture-0001",
+    "mode": "catalogue",
+    "scenario": "A01,A04,A08,N01",
+    "generated_at_epoch": 1700000220.0,
+    "sim_ip": "10.10.0.40",
+    "target": "http://10.10.0.20",
+    "target_ip": "10.10.0.20",
+    "demo_sids": [1000001, 1000002, 1000003, 1000004],
+    "ruleset_version": "fixture-ruleset",
+    "suricata_version": "7.0.7"
+  },
+  "entries": [
+    {
+      "id": "A01", "name": "SYN port scan", "attack_id": "T1046", "kind": "attack",
+      "dest_ip": "10.10.0.20", "start_epoch": 1700000100.0, "end_epoch": 1700000110.0,
+      "expected": {"any_sig_substr": ["scan", "nmap"], "any_classtype": ["attempted-recon"]}
+    },
+    {
+      "id": "A04", "name": "SQL injection", "attack_id": "T1190", "kind": "attack",
+      "dest_ip": "10.10.0.20", "start_epoch": 1700000130.0, "end_epoch": 1700000140.0,
+      "expected": {"any_sig_substr": ["sql injection", "sqli"], "any_classtype": ["web-application-attack"]}
+    },
+    {
+      "id": "A08", "name": "DNS tunneling", "attack_id": "T1071.004", "kind": "attack",
+      "dest_ip": null, "start_epoch": 1700000160.0, "end_epoch": 1700000170.0,
+      "expected": {"any_sig_substr": ["tunnel", "dns"], "any_classtype": ["bad-unknown"]}
+    },
+    {
+      "id": "N01", "name": "Legitimate admin login", "attack_id": "-", "kind": "negative",
+      "dest_ip": "10.10.0.20", "start_epoch": 1700000200.0, "end_epoch": 1700000210.0,
+      "expected": {"any_sig_substr": ["brute"], "any_classtype": ["attempted-user"]}
+    }
+  ]
+}

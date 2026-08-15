@@ -1,0 +1,8 @@
+{"timestamp":"2023-11-14T22:14:10.000000+0000","event_type":"alert","src_ip":"10.10.0.30","dest_ip":"10.10.0.20","alert":{"signature_id":1000004,"signature":"NETGUARD unexpected TCP probe to 8080","category":"Attempted Information Leak","severity":2}}
+{"timestamp":"2023-11-14T22:15:03.000000+0000","event_type":"alert","src_ip":"10.10.0.40","dest_ip":"10.10.0.20","alert":{"signature_id":2010935,"signature":"ET SCAN Nmap Scripting Engine User-Agent Detected","category":"attempted-recon","severity":2}}
+{"timestamp":"2023-11-14T22:15:04.000000+0000","event_type":"alert","src_ip":"10.10.0.40","dest_ip":"10.10.0.20","alert":{"signature_id":1000004,"signature":"NETGUARD unexpected TCP probe to 8080","category":"attempted-recon","severity":2}}
+{"timestamp":"2023-11-14T22:15:05.000000+0000","event_type":"http","src_ip":"10.10.0.40","dest_ip":"10.10.0.20","http":{"hostname":"10.10.0.20","url":"/search"}}
+{"timestamp":"2023-11-14T22:15:06.000000+0000","event_type":"stats","stats":{"uptime":600}}
+{"timestamp":"2023-11-14T22:15:03.500000+0000","event_type":"alert","src_ip":"10.10.0.30","dest_ip":"10.10.0.20","alert":{"signature_id":2009999,"signature":"ET SCAN Generic Scan from generator","category":"attempted-recon","severity":2}}
+{"timestamp":"2023-11-14T22:15:35.000000+0000","event_type":"alert","src_ip":"10.10.0.40","dest_ip":"10.10.0.20","alert":{"signature_id":2006446,"signature":"ET WEB_SPECIFIC_APPS SQL Injection Attempt UNION SELECT","category":"Web Application Attack","severity":1}}
+{"timestamp":"2023-11-14T22:17:45.000000+0000","event_type":"alert","src_ip":"10.10.0.40","dest_ip":"10.10.0.20","alert":{"signature_id":2001219,"signature":"ET SCAN Possible Brute Force Attack","category":"Attempted User Privilege Gain","severity":2}}

@@ -108,6 +108,43 @@ docker compose logs -f traffic-generator
 
 Expected Suricata alerts come from `services/suricata/rules/local.rules`, especially the traffic-generator user agent and `/admin` probe rule.
 
+## Detection Measurement (M2)
+
+NetGuard measures detection instead of asserting it. A profile-gated attack
+simulator launches a labeled catalogue of recognizable attack shapes (and benign
+"negative controls") against the monitored app; a scorer joins that manifest
+against Suricata's `eve.json` and reports recall, precision, false-positive count
+and MTTD. The four Sprint-1 rules are self-referential (they match the project's
+own traffic), so a baseline run against them is expected to score ~0/10 real
+recall — every real technique is missed. That deliberately dismal baseline is the
+denominator every later rule change is measured against.
+
+```sh
+# One command: launch the catalogue, copy eve.json out of the volume, score.
+SCENARIO=all ./scripts/run-catalogue.sh
+# → runs/<ts>/{manifest.json, eve.json, scorecard.json}
+```
+
+Guards that keep the number honest:
+
+- Demo rules (sids 1000001–1000004) are **never** counted as detection; they only
+  prove the capture+alert pipeline is alive.
+- If Suricata captured nothing, the scorer reports `INVALID_RUN` rather than a
+  misleading `0/10` — a dead capture and a ruleset that misses everything must not
+  look identical. (On Windows/macOS this is expected until the M1 namespace-shared
+  Suricata fix; `network_mode: host` captures no bridge traffic there.)
+
+Verify the scorer logic without a running stack (pure-function self-test over
+committed fixtures):
+
+```sh
+python -m unittest tests.test_scorer -v
+```
+
+The attack simulator is opt-in (`profiles: [attack]`) and attached only to
+`netguard-lab`, so the everyday `docker compose up` stays benign and the simulator
+can never reach the monitoring plane.
+
 ## Architecture Docs
 
 - `architecture/architecture-diagram.mmd`

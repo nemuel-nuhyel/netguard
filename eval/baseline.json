@@ -1,0 +1,8 @@
+{
+  "status": "not_yet_run",
+  "note": "PLACEHOLDER — not a measurement. The real baseline is produced by running scripts/run-catalogue.sh against the current four local.rules, which is expected to score ~0/10 real recall (all four rules are self-referential demo rules, excluded from detection per ADR-003). This file must be REPLACED by a genuine scorer output (copy runs/<ts>/scorecard.json's aggregate into `metrics`). Do NOT hand-edit metrics into it — fabricating a measurement is exactly the failure this project exists to kill (plan ADR-004). Producing the real baseline is blocked until the Docker stack runs with a live capture (M1's namespace-sharing fix; F4).",
+  "ruleset_version": null,
+  "suricata_version": null,
+  "metrics": null,
+  "per_technique": {}
+}

@@ -76,6 +76,32 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  attack-sim:
+    build:
+      context: ./services/attack-sim
+    container_name: netguard-attack-sim
+    profiles:
+      - attack                          # opt-in; the default `up` stays benign
+    environment:
+      TARGET: ${ATTACK_TARGET:-http://10.10.0.20}
+      TARGET_IP: ${ATTACK_TARGET_IP:-10.10.0.20}
+      SIM_IP: 10.10.0.40
+      SCENARIO: ${SCENARIO:-all}
+      MODE: ${MODE:-catalogue}          # catalogue = labeled run for scoring
+    cap_add:
+      - NET_RAW                         # nmap -sS SYN scan needs raw sockets
+    depends_on:
+      monitored-app:
+        condition: service_healthy
+    networks:
+      netguard-lab:                     # lab only — cannot reach netguard-monitor (invariant 2)
+        ipv4_address: 10.10.0.40
+    volumes:
+      - ./runs:/runs                    # driver writes runs/<id>/manifest.json here
+    # One-shot job run via `docker compose --profile attack run --rm attack-sim`.
+    # No `restart` or `healthcheck` on purpose: it launches the catalogue once
+    # and exits — a long-running/health model would be wrong for a batch job.
+
   suricata:
     image: jasonish/suricata:7
     container_name: netguard-suricata
