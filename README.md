@@ -114,10 +114,24 @@ NetGuard measures detection instead of asserting it. A profile-gated attack
 simulator launches a labeled catalogue of recognizable attack shapes (and benign
 "negative controls") against the monitored app; a scorer joins that manifest
 against Suricata's `eve.json` and reports recall, precision, false-positive count
-and MTTD. The four Sprint-1 rules are self-referential (they match the project's
-own traffic), so a baseline run against them is expected to score ~0/10 real
-recall — every real technique is missed. That deliberately dismal baseline is the
-denominator every later rule change is measured against.
+and MTTD.
+
+Detection comes in three layers (plan §4.1):
+
+- **ET Open** (`suricata.rules`) — the Emerging Threats Open ruleset, fetched and
+  content-pinned by `scripts/update-rules.sh` (run in the `suricata-rules` init
+  container) into the `suricata-rules` volume. The pin is recorded in
+  `eval/ruleset.lock` and stamped into every scorecard, so a scored run is
+  reproducible. This is the broad, real-world coverage.
+- **`local.rules`** — lab-specific author rules. Empty on this first M3 pass, on
+  purpose: measure what ET Open catches alone before writing any gap-fillers.
+- **`demo.rules`** — the four self-referential Sprint-1 rules. Loaded for the
+  pipeline smoke test / liveness only; sids 1000001–1000004 are **never** counted
+  as detection (ADR-003).
+
+The old baseline (self-referential rules only) scored ~0/10 real recall — every
+real technique missed. That deliberately dismal baseline is the denominator the
+ET Open run is measured against.
 
 ```sh
 # One command: launch the catalogue, copy eve.json out of the volume, score.

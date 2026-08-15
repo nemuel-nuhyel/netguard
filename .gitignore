@@ -25,6 +25,9 @@ logs/*.log
 data/
 # attack-sim run artifacts: manifests, copied eve.json, scorecards
 runs/
+# Python bytecode
+__pycache__/
+*.pyc
 
 # ── Editor / OS ──
 .DS_Store

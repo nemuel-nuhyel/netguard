@@ -102,17 +102,53 @@ services:
     # No `restart` or `healthcheck` on purpose: it launches the catalogue once
     # and exits — a long-running/health model would be wrong for a batch job.
 
+  suricata-rules:
+    # One-shot init: fetch + pin ET Open into the suricata-rules volume before
+    # Suricata starts (ADR-002). Needs internet egress, so it sits on
+    # netguard-mgmt (bridge NAT), not host mode.
+    image: jasonish/suricata:7.0.7
+    container_name: netguard-suricata-rules
+    entrypoint: ["/bin/sh", "/scripts/update-rules.sh"]
+    environment:
+      SURICATA_VERSION: "7.0.7"
+      VERIFY: ${RULESET_VERIFY:-0}
+    volumes:
+      - suricata-rules:/var/lib/suricata
+      - ./scripts/update-rules.sh:/scripts/update-rules.sh:ro
+      - ./eval:/eval                     # writes the pinned eval/ruleset.lock
+    networks:
+      - netguard-mgmt
+    restart: "no"
+
   suricata:
-    image: jasonish/suricata:7
+    image: jasonish/suricata:7.0.7
     container_name: netguard-suricata
-    network_mode: host
+    # Namespace-shared capture (ADR-001, F4): Suricata joins monitored-app's
+    # network namespace and inspects its eth0, so it sees exactly the traffic
+    # reaching the target — portably on Linux, Windows and macOS. Host mode
+    # captured nothing usable on the author's Windows host.
+    network_mode: "service:monitored-app"
+    depends_on:
+      suricata-rules:
+        condition: service_completed_successfully
+      monitored-app:
+        condition: service_healthy
     cap_add:
       - NET_ADMIN
       - NET_RAW
       - SYS_NICE
+    # Bypass the image's entrypoint wrapper: it chowns the config files and,
+    # under `set -e`, aborts (exit 1) when they are read-only bind mounts.
+    # Running the suricata binary directly (as root, with the caps above) avoids
+    # that and is the correct behaviour for our :ro config mounts.
+    entrypoint: ["suricata"]
+    # Interface is hardcoded to eth0: with namespace sharing that is always the
+    # monitored app's interface. af-packet cannot capture on the 'any' pseudo
+    # device inside a shared netns, so this must not be overridable by a stale
+    # SURICATA_INTERFACE in .env.
     command:
       - -i
-      - ${SURICATA_INTERFACE:-any}
+      - eth0
       - -k
       - none
       - -c
@@ -122,6 +158,8 @@ services:
     volumes:
       - ./services/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./services/suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
+      - ./services/suricata/rules/demo.rules:/etc/suricata/rules/demo.rules:ro
+      - suricata-rules:/var/lib/suricata:ro   # ET Open (suricata.rules), populated by suricata-rules
       - suricata-logs:/var/log/suricata
     healthcheck:
       test: ["CMD-SHELL", "pidof suricata >/dev/null 2>&1"]
@@ -275,6 +313,7 @@ networks:
 
 volumes:
   wireguard-config:
+  suricata-rules:
   suricata-logs:
   loki-data:
   promtail-positions:

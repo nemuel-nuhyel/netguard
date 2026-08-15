@@ -2,21 +2,53 @@
 ---
 
 vars:
+  # HOME_NET is scoped to the monitored asset itself: Suricata shares that
+  # container's netns and protects it, so the attack simulator (10.10.0.40) and
+  # the traffic generator (10.10.0.30) are EXTERNAL_NET. This is what lets ET
+  # Open's `$EXTERNAL_NET -> $HTTP_SERVERS` rules fire against an in-lab
+  # attacker (plan §3.2). The full standard variable set below is required —
+  # ET Open references all of these, and an undefined one fails rule loading.
   address-groups:
-    HOME_NET: "[10.10.0.0/24,10.50.0.0/24,10.60.0.0/24,10.200.0.0/24]"
+    HOME_NET: "[10.10.0.20/32]"
     EXTERNAL_NET: "!$HOME_NET"
     HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
     DNS_SERVERS: "$HOME_NET"
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DC_SERVERS: "$HOME_NET"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$HOME_NET"
+    MODBUS_CLIENT: "$HOME_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$HOME_NET"
+    ENIP_SERVER: "$HOME_NET"
+    FTP_SERVERS: "$HOME_NET"
   port-groups:
     HTTP_PORTS: "80"
     SHELLCODE_PORTS: "!80"
     ORACLE_PORTS: 1521
     SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: 21
+    GENEVE_PORTS: 6081
+    VXLAN_PORTS: 4789
+    TEREDO_PORTS: 3544
 
 default-log-dir: /var/log/suricata
-default-rule-path: /etc/suricata/rules
+# ET Open lands in the suricata-rules volume via scripts/update-rules.sh.
+default-rule-path: /var/lib/suricata/rules
 rule-files:
-  - local.rules
+  # Emerging Threats Open — broad, real-world coverage (ADR-002). Produced and
+  # pinned by the suricata-rules init container before Suricata starts.
+  - suricata.rules
+  # Lab-specific author rules — currently empty (see the file's header).
+  - /etc/suricata/rules/local.rules
+  # Pipeline-validation ONLY, never counted as detection (ADR-003).
+  - /etc/suricata/rules/demo.rules
 
 classification-file: /etc/suricata/classification.config
 reference-config-file: /etc/suricata/reference.config

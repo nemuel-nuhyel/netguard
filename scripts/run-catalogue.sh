@@ -33,11 +33,26 @@ SCENARIO="${SCENARIO}" MODE=catalogue \
 echo "[run-catalogue] copying eve.json out of the suricata-logs volume"
 docker compose cp suricata:/var/log/suricata/eve.json "${RUN_DIR}/eve.json"
 
-# 3) Score. Stamp the pinned ruleset/Suricata versions if available.
-RULESET_VERSION="$(docker compose exec -T suricata sh -c 'cat /var/lib/suricata/rules/version 2>/dev/null || echo unknown' 2>/dev/null || echo unknown)"
+# 3) Score. Stamp the pinned ET Open version (from the lockfile) + Suricata.
+RULESET_VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' eval/ruleset.lock 2>/dev/null | head -n1)"
+RULESET_VERSION="${RULESET_VERSION:-unknown}"
 SURICATA_VERSION="$(docker compose exec -T suricata suricata -V 2>/dev/null | sed -n 's/.*version //p' | head -n1 || echo unknown)"
 
-python -m netguard.scorer \
+# Prefer a host Python; fall back to a throwaway Python container (the scorer is
+# pure stdlib, so no image build or pip install is needed). This keeps the run
+# working on hosts with no Python installed.
+score() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m netguard.scorer "$@"
+  elif command -v python >/dev/null 2>&1; then
+    python -m netguard.scorer "$@"
+  else
+    echo "[run-catalogue] no host Python; scoring in a python:3.12-alpine container"
+    docker run --rm -v "$PWD":/w -w /w python:3.12-alpine python -m netguard.scorer "$@"
+  fi
+}
+
+score \
   --manifest "${RUN_DIR}/manifest.json" \
   --eve      "${RUN_DIR}/eve.json" \
   --baseline eval/baseline.json \

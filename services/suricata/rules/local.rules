@@ -1,4 +1,15 @@
-alert http any any -> any any (msg:"NETGUARD safe traffic generator user agent"; flow:to_server,established; http.user_agent; content:"NetGuardTrafficGenerator"; classtype:web-application-activity; sid:1000001; rev:1;)
-alert http any any -> any any (msg:"NETGUARD lab admin path probe"; flow:to_server,established; http.uri; content:"/admin"; startswith; classtype:web-application-activity; priority:2; sid:1000002; rev:1;)
-alert dns any any -> any any (msg:"NETGUARD DNS request for example.com"; dns.query; content:"example.com"; nocase; classtype:misc-activity; sid:1000003; rev:1;)
-alert tcp any any -> any 8080 (msg:"NETGUARD unexpected TCP probe to 8080"; flags:S; flow:stateless; classtype:attempted-recon; sid:1000004; rev:1;)
+# ── NetGuard local.rules — lab-specific, author-authored detection ──────────
+#
+# This file is for signatures tailored to THIS lab (the monitored-app, its
+# topology) that Emerging Threats Open does not cover — the "author-authored
+# detection" layer of plan §4.1.
+#
+# It is intentionally EMPTY right now (M3, first pass): the goal of this pass is
+# to measure what ET Open catches on its own, before any gap-filling rules are
+# written. The four self-referential Sprint-1 rules were moved to demo.rules and
+# are excluded from scoring (ADR-003). Author rules land here in a later pass,
+# each justified by a scorecard gap it closes.
+#
+# Detection coverage currently comes entirely from ET Open (suricata.rules,
+# fetched + pinned by scripts/update-rules.sh).
+# ────────────────────────────────────────────────────────────────────────────
