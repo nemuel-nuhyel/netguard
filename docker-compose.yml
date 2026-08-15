@@ -1,0 +1,256 @@
+name: netguard
+
+services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: netguard-wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Budapest}
+      SERVERURL: ${WG_SERVER_URL:-auto}
+      SERVERPORT: ${WG_SERVER_PORT:-51820}
+      PEERS: ${WG_PEERS:-lab-client}
+      PEERDNS: ${WG_PEER_DNS:-auto}
+      INTERNAL_SUBNET: ${WG_INTERNAL_SUBNET:-10.200.0.0}
+      ALLOWEDIPS: ${WG_ALLOWED_IPS:-10.10.0.0/16,10.200.0.0/24}
+      LOG_CONFS: "true"
+    ports:
+      - "${WG_SERVER_PORT:-51820}:51820/udp"
+    sysctls:
+      net.ipv4.conf.all.src_valid_mark: "1"
+      net.ipv4.ip_forward: "1"
+    volumes:
+      - wireguard-config:/config
+    networks:
+      netguard-mgmt:
+        ipv4_address: 10.50.0.10
+      netguard-lab:
+        ipv4_address: 10.10.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "wg show wg0 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+
+  monitored-app:
+    image: nginx:1.27-alpine
+    container_name: netguard-monitored-app
+    networks:
+      netguard-lab:
+        ipv4_address: 10.10.0.20
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && pidof nginx >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  traffic-generator:
+    build:
+      context: ./services/traffic-generator
+    container_name: netguard-traffic-generator
+    environment:
+      APP_URL: http://monitored-app/
+      INTERVAL_SECONDS: ${TRAFFIC_INTERVAL_SECONDS:-10}
+      DNS_PROBE_HOST: ${TRAFFIC_DNS_PROBE:-example.com}
+      PORT_PROBE_HOST: monitored-app
+      PORT_PROBE_PORTS: "80,8080"
+    depends_on:
+      monitored-app:
+        condition: service_healthy
+    networks:
+      netguard-lab:
+        ipv4_address: 10.10.0.30
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/traffic-generator.health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  suricata:
+    image: jasonish/suricata:7
+    container_name: netguard-suricata
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    command:
+      - -i
+      - ${SURICATA_INTERFACE:-any}
+      - -k
+      - none
+      - -c
+      - /etc/suricata/suricata.yaml
+      - -l
+      - /var/log/suricata
+    volumes:
+      - ./services/suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./services/suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
+      - suricata-logs:/var/log/suricata
+    healthcheck:
+      test: ["CMD-SHELL", "pidof suricata >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: netguard-loki
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    networks:
+      netguard-monitor:
+        ipv4_address: 10.60.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: netguard-promtail
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - promtail-positions:/tmp
+      - suricata-logs:/var/log/suricata:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      netguard-monitor:
+        ipv4_address: 10.60.0.20
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9080/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: netguard-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      netguard-monitor:
+        ipv4_address: 10.60.0.30
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  cadvisor:
+    image: ${CADVISOR_IMAGE:-ghcr.io/google/cadvisor:v0.60.5}
+    container_name: netguard-cadvisor
+    profiles:
+      - cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      netguard-monitor:
+        ipv4_address: 10.60.0.40
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: netguard-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-local-password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_METRICS_ENABLED: "true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      loki:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    networks:
+      netguard-mgmt:
+        ipv4_address: 10.50.0.20
+      netguard-monitor:
+        ipv4_address: 10.60.0.50
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  netguard-mgmt:
+    name: netguard-mgmt
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.50.0.0/24
+  netguard-lab:
+    name: netguard-lab
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/24
+  netguard-monitor:
+    name: netguard-monitor
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.60.0.0/24
+
+volumes:
+  wireguard-config:
+  suricata-logs:
+  loki-data:
+  promtail-positions:
+  prometheus-data:
+  grafana-data:

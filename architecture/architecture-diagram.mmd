@@ -1,0 +1,31 @@
+flowchart LR
+  subgraph Lab["netguard-lab"]
+    Traffic["Safe Traffic Generator"]
+    App["Monitored App\nnginx"]
+    WG["WireGuard Gateway"]
+  end
+
+  subgraph Host["Host Packet Capture"]
+    Suricata["Suricata IDS\nEve JSON"]
+  end
+
+  subgraph Monitor["netguard-monitor"]
+    Promtail["Promtail"]
+    Loki["Loki"]
+    Prometheus["Prometheus"]
+    Cadvisor["cAdvisor"]
+  end
+
+  subgraph Mgmt["netguard-mgmt"]
+    Grafana["Grafana"]
+  end
+
+  Traffic -->|HTTP, DNS, TCP probes| App
+  WG -->|VPN lab access| App
+  Traffic -. observed by host capture .-> Suricata
+  WG -. observed by host capture .-> Suricata
+  Suricata -->|eve.json volume| Promtail
+  Promtail -->|push logs| Loki
+  Cadvisor -->|container metrics| Prometheus
+  Loki -->|log datasource| Grafana
+  Prometheus -->|metrics datasource| Grafana
