@@ -1,6 +1,14 @@
 # NetGuard — 3-minute demo
 
-A scripted walkthrough of the core story: **an attack launched and detected live, then measured.** Every command below is copy-pasteable; the expected output is the real output from a scored run. (A recorded screen capture belongs here too — this script is what it follows.)
+A scripted walkthrough of the core story: **an attack launched and detected live, then measured.** Every command below is copy-pasteable; the expected output is the real output from a scored run.
+
+> **Automated recording:** [`demo.tape`](demo.tape) drives this exact walkthrough with real commands. Render it with [VHS](https://github.com/charmbracelet/vhs) — best from Linux or WSL — to produce `docs/demo.gif` and `docs/demo.mp4`:
+>
+> ```sh
+> vhs docs/demo.tape
+> ```
+>
+> It brings the lab up off-camera, then films the stack, the quarantined demo rules, the real catalogue run (→ 9/10), and the honesty self-test. Embed the GIF at the top of the README once rendered.
 
 > Prereqs: Docker Engine + Compose v2. From the repo root. Python optional (the scorer falls back to a container).
 
