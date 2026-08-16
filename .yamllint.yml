@@ -1,0 +1,12 @@
+# Relaxed yamllint config for the CI `validate` stage. We care about parse
+# correctness, not cosmetic line length / comment spacing (the compose file and
+# workflow have long, intentionally-formatted lines).
+extends: relaxed
+rules:
+  line-length: disable
+  document-start: disable
+  truthy: disable
+  comments: disable
+  comments-indentation: disable
+  empty-lines: disable
+  trailing-spaces: disable

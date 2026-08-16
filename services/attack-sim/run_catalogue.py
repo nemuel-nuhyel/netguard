@@ -21,8 +21,10 @@ Environment:
     RUN_ID      run directory name under /runs   (default: UTC timestamp)
 """
 
+import ipaddress
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -103,14 +105,31 @@ def http(method: str, path: str, *, body: bytes = None, headers: dict = None):
 
 # ── Technique implementations. Each returns nothing; the runner times them. ──
 
+def safe_target(value: str) -> str:
+    """Reject a TARGET_IP that could smuggle extra nmap argv (argument injection).
+
+    The subprocess call is list-form (no shell), so this is defense in depth: it
+    guarantees the target is an IP or a plain hostname and never begins with '-'.
+    """
+    try:
+        ipaddress.ip_address(value)
+        return value
+    except ValueError:
+        pass
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}", value):
+        return value
+    raise SystemExit(f"[attack-sim] refusing unsafe TARGET_IP: {value!r}")
+
+
 def tech_nmap(args):
     """A01/A02: SYN or version scan. Falls back to -sT if raw sockets denied."""
     if not shutil.which("nmap"):
         log("nmap not installed; skipping scan payload (window still recorded)")
         return
-    cmd = ["nmap", *args, "-p", "1-1024,3000,8080,9090", "-Pn", TARGET_IP]
+    cmd = ["nmap", *args, "-p", "1-1024,3000,8080,9090", "-Pn", safe_target(TARGET_IP)]
     try:
-        subprocess.run(cmd, timeout=90, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        # list-form subprocess (no shell); target validated by safe_target()
+        subprocess.run(cmd, timeout=90, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)  # nosemgrep
     except (subprocess.SubprocessError, OSError) as exc:
         # -sS needs CAP_NET_RAW; fall back to a TCP connect scan if it bombed.
         if "-sS" in args:

@@ -1,0 +1,115 @@
+name: netguard-ci
+
+# Every stage from the engineering plan §6. Fast, deterministic jobs run on every
+# push/PR; the heavy detection regression gate (spins the stack up and scores the
+# catalogue) runs on PRs and on demand.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate (compose · lint · guards)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: docker compose config >/dev/null
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install linters
+        run: pip install --quiet ruff yamllint
+      - name: ruff
+        run: ruff check netguard services/attack-sim tests
+      - name: yamllint
+        run: yamllint docker-compose.yml .github monitoring .pre-commit-config.yaml
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+      - name: gitignore guard (F2/ADR-006)
+        run: ./scripts/check-gitignore.sh
+      - name: demo-rules guard (F3/ADR-003)
+        run: ./scripts/check-demo-rules.sh
+
+  secrets:
+    name: secrets (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  unit:
+    name: unit (scorer self-test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: scorer unit tests
+        run: python -m unittest tests.test_scorer -v
+
+  rules:
+    name: rules (suricata -T)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: compile-test local + demo rules
+        run: ./scripts/validate-rules.sh
+
+  sast:
+    name: sast (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: semgrep
+        run: |
+          pip install --quiet semgrep
+          semgrep --error --severity ERROR \
+            --config p/python --config p/security-audit \
+            netguard services/attack-sim
+
+  containers:
+    name: containers (trivy fs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  detection:
+    name: detection (catalogue + baseline gate)
+    runs-on: ubuntu-latest
+    # Heavy integration gate: brings the stack up, runs the catalogue, scores it
+    # against eval/baseline.json. Runs on PRs and on demand, not on every push.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: [validate, unit, rules]
+    steps:
+      - uses: actions/checkout@v4
+      - name: run detection regression gate
+        run: ./scripts/ci-detection.sh
+      - name: upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detection-scorecard
+          path: runs/**/scorecard.json
+          if-no-files-found: ignore

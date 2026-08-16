@@ -42,14 +42,16 @@ SURICATA_VERSION="$(docker compose exec -T suricata suricata -V 2>/dev/null | se
 # pure stdlib, so no image build or pip install is needed). This keeps the run
 # working on hosts with no Python installed.
 score() {
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -m netguard.scorer "$@"
-  elif command -v python >/dev/null 2>&1; then
-    python -m netguard.scorer "$@"
-  else
-    echo "[run-catalogue] no host Python; scoring in a python:3.12-alpine container"
-    docker run --rm -v "$PWD":/w -w /w python:3.12-alpine python -m netguard.scorer "$@"
-  fi
+  # Test that the interpreter actually RUNS, not just that it is on PATH — the
+  # Windows Store `python`/`python3` shims resolve on PATH but error on use.
+  for py in python3 python; do
+    if "$py" -c 'import sys' >/dev/null 2>&1; then
+      "$py" -m netguard.scorer "$@"
+      return $?
+    fi
+  done
+  echo "[run-catalogue] no working host Python; scoring in a python:3.12-alpine container"
+  MSYS_NO_PATHCONV=1 docker run --rm -v "$PWD":/w -w /w python:3.12-alpine python -m netguard.scorer "$@"
 }
 
 score \

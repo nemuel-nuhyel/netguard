@@ -1,8 +1,22 @@
 {
-  "status": "not_yet_run",
-  "note": "PLACEHOLDER — not a measurement. The real baseline is produced by running scripts/run-catalogue.sh against the current four local.rules, which is expected to score ~0/10 real recall (all four rules are self-referential demo rules, excluded from detection per ADR-003). This file must be REPLACED by a genuine scorer output (copy runs/<ts>/scorecard.json's aggregate into `metrics`). Do NOT hand-edit metrics into it — fabricating a measurement is exactly the failure this project exists to kill (plan ADR-004). Producing the real baseline is blocked until the Docker stack runs with a live capture (M1's namespace-sharing fix; F4).",
-  "ruleset_version": null,
-  "suricata_version": null,
-  "metrics": null,
-  "per_technique": {}
+  "status": "established",
+  "note": "The committed detection level the CI gate protects (plan §5.3). The scorer fails a run whose recall drops below `metrics.recall` or whose false-positive count rises above `metrics.fp_count`. Bump this deliberately, in the same commit as the rule/ruleset change that improves detection, so the metric move is a reviewable diff — never let it drift silently (ADR: intentional improvement updates the baseline).",
+  "seeded_from_run": "20260816T150202Z",
+  "ruleset_version": "ET-Open/suricata-7.0.7/2026-08-16",
+  "suricata_version": "7.0.7",
+  "rules": "ET Open (suricata.rules) + author local.rules (A09 beacon sid 1000010, A10 exfil sid 1000020)",
+  "metrics": {
+    "recall": 0.9,
+    "precision": 1.0,
+    "fp_count": 0,
+    "mttd_seconds": 0.013
+  },
+  "per_technique": {
+    "A01": true, "A02": true, "A03": true, "A04": true, "A05": true,
+    "A06": true, "A07": true, "A08": false, "A09": true, "A10": true,
+    "N01": "clean", "N02": "clean", "N03": "clean", "N04": "clean"
+  },
+  "known_miss": {
+    "A08": "DNS tunneling — the sim's DNS never traverses the monitored-app netns, so a namespace-scoped IDS cannot see it (capture-scope limit, plan §5.4 / ADR-001). Not a ruleset gap; excluded from the recall target by design."
+  }
 }

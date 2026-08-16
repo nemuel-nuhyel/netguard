@@ -1,0 +1,8 @@
+# Ruff config for the CI `validate` stage. We gate on real bugs (pyflakes F) and
+# pycodestyle errors/warnings (E/W), not on stylistic opinions. Line length is
+# handled by formatting convention, not the linter.
+line-length = 100
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

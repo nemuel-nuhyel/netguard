@@ -159,6 +159,33 @@ The attack simulator is opt-in (`profiles: [attack]`) and attached only to
 `netguard-lab`, so the everyday `docker compose up` stays benign and the simulator
 can never reach the monitoring plane.
 
+## CI / DevSecOps (M4)
+
+`.github/workflows/ci.yml` runs every stage from the plan §6 on push/PR:
+
+| Job | What it gates |
+|---|---|
+| validate | `docker compose config`, ruff, yamllint, shellcheck, gitignore + demo-rules guards |
+| secrets | gitleaks over full history |
+| unit | the scorer self-test |
+| rules | `suricata -T` compiles local + demo rules |
+| sast | Semgrep (no ERROR-severity) |
+| containers | Trivy filesystem scan (no CRITICAL) |
+| detection | brings the stack up, runs the catalogue, and **fails the PR if recall drops below or FP rises above `eval/baseline.json`** |
+
+The detection job is the regression gate: `eval/baseline.json` records the
+committed level (currently **recall 0.9, FP 0**). An intentional detection
+improvement bumps the baseline in the same PR, so the metric move is a
+reviewable diff — never silent drift. Note ET Open is a rolling ruleset, so a
+future ET change that drops coverage will (correctly) fail the gate until
+investigated or the baseline is re-pinned.
+
+Local mirror of the git-hygiene gates:
+
+```sh
+pipx install pre-commit && pre-commit install   # gitleaks, ruff, shellcheck, guards
+```
+
 ## Architecture Docs
 
 - `architecture/architecture-diagram.mmd`
