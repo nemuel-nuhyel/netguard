@@ -1,8 +1,8 @@
 {
   "source": "et/open",
   "suricata_version": "7.0.7",
-  "fetched_at": "2026-08-15T20:12:39Z",
-  "version": "ET-Open/suricata-7.0.7/2026-08-15",
+  "fetched_at": "2026-08-16T15:25:34Z",
+  "version": "ET-Open/suricata-7.0.7/2026-08-16",
   "sha256": "8d8f599f026269d9ecb0704458b00b1601967bd041b76f8df4702d3228f77d0e",
   "rule_count": 52328
 }

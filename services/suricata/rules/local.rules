@@ -10,6 +10,30 @@
 # are excluded from scoring (ADR-003). Author rules land here in a later pass,
 # each justified by a scorecard gap it closes.
 #
-# Detection coverage currently comes entirely from ET Open (suricata.rules,
-# fetched + pinned by scripts/update-rules.sh).
+# Detection coverage comes from ET Open (suricata.rules) plus the two
+# author-authored rules below, which close measured gaps ET Open missed on
+# its own (A09 C2 beaconing, A10 exfil — see the scorecard).
+#
+# Discipline: these match GENERALIZABLE attack characteristics that real
+# malware shares, NOT the simulator's specifics. They deliberately do not
+# match the /beacon or /upload paths the attack-sim happens to use — matching
+# the sim's own strings is the self-referential trap that put the Sprint-1
+# rules in demo.rules (ADR-003). A rule is only credible if it would fire on
+# traffic the sim never sent.
 # ────────────────────────────────────────────────────────────────────────────
+
+# A09 — C2 beaconing (T1071). Heuristic: repeated HTTP requests from a single
+# host advertising a decade-obsolete "MSIE 6.0" user agent (a classic malware
+# C2 tell) at a beacon-like rate. detection_filter fires only after several
+# requests in a short window, modelling periodic check-ins rather than a single
+# hit. Not true periodicity analysis (that needs behavioural analytics beyond a
+# signature) — a documented heuristic. Benign lab traffic uses modern or
+# tool-specific user agents, so this stays clear of the negative controls.
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS any (msg:"NETGUARD LOCAL C2 beacon heuristic - repeated legacy MSIE6 user-agent"; flow:established,to_server; http.user_agent; content:"MSIE 6.0"; nocase; detection_filter:track by_src, count 5, seconds 30; classtype:trojan-activity; sid:1000010; rev:1; metadata:author netguard, attack_target Server, mitre_technique_id T1071;)
+
+# A10 — Exfiltration over HTTP (T1048). Heuristic: an inbound POST whose
+# Content-Length is >= 1,000,000 bytes (7+ digits) — a suspiciously large
+# outbound upload to the monitored server. Generalises to any bulk HTTP POST
+# exfil, independent of URI. The benign "large download" control (N02) is a GET
+# with a large *response*, not a large request body, so it does not match.
+alert http $EXTERNAL_NET any -> $HTTP_SERVERS any (msg:"NETGUARD LOCAL large outbound POST - possible exfiltration"; flow:established,to_server; http.method; content:"POST"; http.header; pcre:"/^Content-Length\x3a\s*\d{7,}/mi"; classtype:policy-violation; sid:1000020; rev:1; metadata:author netguard, attack_target Server, mitre_technique_id T1048;)
