@@ -86,14 +86,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL
-          exit-code: "1"
-          ignore-unfixed: true
+      - name: trivy filesystem scan (no CRITICAL)
+        # Pinned Trivy image run directly — avoids the action's tag-resolution
+        # churn and keeps the version explicit, in the spirit of the project.
+        run: |
+          docker run --rm -v "$PWD:/src" aquasec/trivy:0.58.1 \
+            fs --scanners vuln,secret,misconfig --severity CRITICAL \
+            --exit-code 1 --ignore-unfixed --quiet /src
 
   detection:
     name: detection (catalogue + baseline gate)
