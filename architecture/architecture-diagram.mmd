@@ -1,31 +1,35 @@
 flowchart LR
-  subgraph Lab["netguard-lab"]
-    Traffic["Safe Traffic Generator"]
-    App["Monitored App\nnginx"]
-    WG["WireGuard Gateway"]
+  subgraph Lab["netguard-lab (10.10.0.0/24) — data plane"]
+    Traffic["traffic-generator\n(benign liveness)"]
+    App["monitored-app\nnginx (HOME_NET)"]
+    Attack["attack-sim\nprofile: attack"]
+    Suricata["Suricata 7\nshared netns · eve.json\nET Open + local + demo"]
   end
 
-  subgraph Host["Host Packet Capture"]
-    Suricata["Suricata IDS\nEve JSON"]
-  end
-
-  subgraph Monitor["netguard-monitor"]
+  subgraph Monitor["netguard-monitor — control plane"]
     Promtail["Promtail"]
     Loki["Loki"]
     Prometheus["Prometheus"]
-    Cadvisor["cAdvisor"]
+    Cadvisor["cAdvisor (opt-in)"]
   end
 
-  subgraph Mgmt["netguard-mgmt"]
+  subgraph Mgmt["netguard-mgmt — operator"]
     Grafana["Grafana"]
+    WG["WireGuard gateway"]
   end
 
-  Traffic -->|HTTP, DNS, TCP probes| App
-  WG -->|VPN lab access| App
-  Traffic -. observed by host capture .-> Suricata
-  WG -. observed by host capture .-> Suricata
+  Traffic -->|HTTP / DNS / TCP| App
+  Attack -->|catalogue: scans, web attacks, beacon, exfil| App
+  App -. shared network namespace .-> Suricata
+
   Suricata -->|eve.json volume| Promtail
   Promtail -->|push logs| Loki
   Cadvisor -->|container metrics| Prometheus
   Loki -->|log datasource| Grafana
   Prometheus -->|metrics datasource| Grafana
+  WG -->|VPN lab access| App
+
+  Scorer["netguard/scorer.py\nmanifest × eve.json → scorecard"]
+  Attack -. manifest.json .-> Scorer
+  Suricata -. eve.json .-> Scorer
+  Scorer -->|recall · precision · FP · MTTD| Baseline["eval/baseline.json\nCI regression gate"]
