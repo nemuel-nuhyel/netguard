@@ -404,15 +404,6 @@ docs/                        # demo.gif · demo.mp4 · demo.tape
 .github/workflows/ci.yml     # 7 jobs
 ```
 
-## Roadmap
-
-The measured foundation is complete: namespace-shared capture, the catalogue and scorer, ET Open plus author rules at 9/10, the hardening pass, and a CI regression gate that keeps it there.
-
-Natural extensions, each strictly better for sitting on top of a measured detection rate:
-
-- **Automated response** — a service that reads alerts, checks an allowlist and applies TTL-bounded blocks with an audit trail, defaulting to simulation mode.
-- **AI incident analyst** — turning alert JSON into a structured incident report with timeline and containment recommendations; recommending only, never executing.
-- **Cloud and Kubernetes** — Terraform modules and a K3s deployment, once the Compose version is bulletproof.
 
 ---
 
