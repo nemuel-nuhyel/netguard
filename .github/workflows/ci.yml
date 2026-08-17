@@ -35,6 +35,20 @@ jobs:
         run: ./scripts/check-gitignore.sh
       - name: demo-rules guard (F3/ADR-003)
         run: ./scripts/check-demo-rules.sh
+      - name: hardening guard (F5/F6, retention, alerting)
+        run: sh ./scripts/check-hardening.sh
+      - name: Loki config validation
+        run: |
+          docker run --rm \
+            -v "$PWD/monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro" \
+            grafana/loki:2.9.8 \
+            "-config.file=/etc/loki/local-config.yaml" "-verify-config=true"
+      - name: Prometheus config and alert-rule validation
+        run: |
+          docker run --rm --entrypoint /bin/promtool \
+            -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v2.52.0 \
+            check config /etc/prometheus/prometheus.yml
 
   secrets:
     name: secrets (gitleaks, full history)

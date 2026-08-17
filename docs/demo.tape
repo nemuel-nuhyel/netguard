@@ -17,6 +17,8 @@
 Output docs/demo.gif
 Output docs/demo.mp4
 
+Require docker
+
 Set Shell "bash"
 Set FontSize 18
 Set Width 1240
@@ -31,14 +33,14 @@ Set Theme { "name": "netguard", "background": "#0a111b", "foreground": "#e7eef7"
 
 # ── setup (hidden): bring the lab up, wait for a live capture, clear ──
 Hide
-Type "docker compose up -d --build suricata traffic-generator" Enter
-Sleep 75s
+Type "docker compose up -d --build --wait --wait-timeout 120 suricata traffic-generator && echo NETGUARD_$(printf STACK_READY) || exit 1" Enter
+Wait+Screen@150s /NETGUARD_STACK_READY/
 Type "clear" Enter
 Sleep 1s
 Show
 
 # ── title ──
-Type "#  NetGuard — a network IDS lab whose detection is MEASURED, not asserted." Enter
+Type "#  NetGuard: a network IDS lab whose detection is MEASURED, not asserted." Enter
 Sleep 2s
 
 # ── act 1: the stack is up ──
@@ -49,7 +51,7 @@ Sleep 3.5s
 
 # ── act 2: the self-referential rules, quarantined ──
 Type "#  The 4 original rules matched the lab's OWN traffic. Quarantined in" Enter
-Type "#  demo.rules and EXCLUDED from the score — they prove liveness, not detection:" Enter
+Type "#  demo.rules and EXCLUDED from the score; they prove liveness, not detection:" Enter
 Sleep 1s
 Type "grep -n 'sid:' services/suricata/rules/demo.rules" Enter
 Sleep 4s
@@ -58,23 +60,27 @@ Sleep 4s
 Type "#  Real detection is measured: launch a labeled attack catalogue," Enter
 Type "#  join the alerts Suricata actually produced, and score it." Enter
 Sleep 1.5s
-Type "SCENARIO=all ./scripts/run-catalogue.sh" Enter
+Type "SCENARIO=all ./scripts/run-catalogue.sh && echo NETGUARD_$(printf BASELINE_PASS) || exit 1" Enter
 # Uncomment for a faster cut (does not reach 9/10):
 # Type "SCENARIO=A01,A04,A07,A09,A10 ./scripts/run-catalogue.sh" Enter
-# Wait until the scorer prints its verdict (VHS >= 0.7). If your VHS lacks
-# Wait, replace the next line with:  Sleep 150s
-Wait+Screen@210s /baseline gate/
+# The full local catalogue consistently finishes in about 60-75 seconds. VHS's
+# ttyd screen scraper can stop refreshing during this long, busy command, so a
+# measured capture window is more reliable than a regex wait here. The command
+# still emits an unmistakable marker only after the baseline gate passes.
+Sleep 85s
 Sleep 4s
 
 Type "#  9/10, precision 1.0, ZERO false positives, MTTD ~0.01s." Enter
-Type "#  A08 is a documented miss — its DNS never reaches the monitored netns." Enter
+Type "#  A08 is a documented miss; its DNS never reaches the monitored netns." Enter
 Sleep 3s
 
 # ── act 4: the honesty guarantee ──
 Type "#  A dead capture can't fake a passing score. The scorer proves it:" Enter
 Sleep 1s
-Type "python3 -m unittest tests.test_scorer 2>&1 | tail -4" Enter
-Sleep 4s
+Type `docker run --rm -v "$PWD":/w -w /w python:3.12-alpine python -m unittest -q tests.test_scorer 2>&1 && echo NETGUARD_TESTS_PASS || exit 1` Enter
+# This command takes about three seconds after the image is cached. A fixed
+# pause avoids a ttyd screen-scrape edge case after the catalogue's long output.
+Sleep 10s
 Type "#  ...and CI fails any change that drops recall or raises false positives." Enter
 Sleep 2.5s
 
@@ -82,6 +88,6 @@ Sleep 2.5s
 Type "clear" Enter
 Sleep 0.5s
 Type "#  clone -> run -> read the score in ~10 minutes." Enter
-Type "#  ET-Open/suricata-7.0.7 · 52,328 rules · pinned & regression-gated." Enter
+Type "#  ET-Open/suricata-7.0.7 | 52,328 rules | pinned & regression-gated." Enter
 Type "#  github.com/nemuel-nuhyel/netguard" Enter
 Sleep 4s

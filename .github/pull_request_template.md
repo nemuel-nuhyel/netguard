@@ -1,6 +1,6 @@
 ## What & why
 
-<!-- One or two sentences. Link the finding (F#) or milestone (M#) if relevant. -->
+<!-- One or two sentences. Link the issue or README section this addresses, if relevant. -->
 
 ## Detection impact
 
