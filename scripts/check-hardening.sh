@@ -82,6 +82,8 @@ require_pattern '^rule_files:$' \
   "Prometheus must load repository alert rules" "$PROMETHEUS_CONFIG"
 require_pattern 'alert: NetGuardLokiIngestionRejected$' \
   "Prometheus must alert when Loki rejects security events" "$PROMETHEUS_RULES"
+require_pattern 'sum\(increase\(loki_discarded_samples_total\[5m\]\)\) > 0$' \
+  "Prometheus must alert on every Loki discarded-sample reason" "$PROMETHEUS_RULES"
 require_pattern 'alert: NetGuardLokiFilesystemPressure$' \
   "Prometheus must alert on Loki filesystem pressure" "$PROMETHEUS_RULES"
 
