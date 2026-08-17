@@ -2,7 +2,10 @@ name: netguard
 
 services:
   wireguard:
-    image: lscr.io/linuxserver/wireguard:latest
+    # Pinned by digest (F6): this container holds NET_ADMIN+SYS_MODULE, so a
+    # floating :latest under those caps is exactly where supply-chain drift is
+    # most dangerous. Re-pin deliberately via `docker buildx imagetools inspect`.
+    image: lscr.io/linuxserver/wireguard@sha256:3abfd4b82212106e357989750b9c0c9859aa511f5305a9a55c18c8de7198b655
     container_name: netguard-wireguard
     cap_add:
       - NET_ADMIN
@@ -16,7 +19,9 @@ services:
       PEERS: ${WG_PEERS:-lab-client}
       PEERDNS: ${WG_PEER_DNS:-auto}
       INTERNAL_SUBNET: ${WG_INTERNAL_SUBNET:-10.200.0.0}
-      ALLOWEDIPS: ${WG_ALLOWED_IPS:-10.10.0.0/16,10.200.0.0/24}
+      # Peer routes: protected lab + operator UI network + WireGuard subnet.
+      # netguard-monitor deliberately stays private; use Grafana for its data.
+      ALLOWEDIPS: ${WG_ALLOWED_IPS:-10.10.0.0/24,10.50.0.0/24,10.200.0.0/24}
       LOG_CONFS: "true"
     ports:
       - "${WG_SERVER_PORT:-51820}:51820/udp"
@@ -218,9 +223,10 @@ services:
       - --web.enable-lifecycle
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"     # loopback only (F5): local/SSH access; never the LAN
     networks:
       netguard-monitor:
         ipv4_address: 10.60.0.30
@@ -262,17 +268,34 @@ services:
     container_name: netguard-grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-local-password}
+      # Admin password via a Docker secret, not an env var (F5): keeps it out of
+      # `docker inspect` and the container's process environment.
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_METRICS_ENABLED: "true"
+    secrets:
+      - grafana_admin_password
+    # Fail closed if a copied .env has a short/blank password (or retains the
+    # old published example). The secret itself is never printed or exported.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        secret=/run/secrets/grafana_admin_password
+        bytes=$$(wc -c < "$$secret")
+        if [ "$$bytes" -lt 16 ] || grep -Fxq 'change-this-local-password' "$$secret"; then
+          echo 'ERROR: set a unique GRAFANA_ADMIN_PASSWORD (16+ characters) in .env' >&2
+          exit 1
+        fi
+        exec /run.sh
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"     # host loopback; VPN peers use private 10.50.0.20
     depends_on:
       loki:
         condition: service_healthy
@@ -290,6 +313,13 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+
+secrets:
+  # Sourced from the .env variable, so there is no secret file in the tree.
+  # Compose mounts it read-only at /run/secrets in the grafana container; the
+  # password never appears in the container's environment or inspect output.
+  grafana_admin_password:
+    environment: GRAFANA_ADMIN_PASSWORD
 
 networks:
   netguard-mgmt:

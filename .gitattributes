@@ -1,0 +1,3 @@
+# Keep repository text portable. In particular, POSIX scripts must remain LF
+# when the project is cloned or edited on Windows.
+* text=auto eol=lf

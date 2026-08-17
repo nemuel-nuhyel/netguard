@@ -30,3 +30,8 @@ repos:
         entry: scripts/check-demo-rules.sh
         language: script
         pass_filenames: false
+      - id: check-hardening
+        name: hardening guard (exposure, secrets, retention, image pins)
+        entry: sh scripts/check-hardening.sh
+        language: system
+        pass_filenames: false

@@ -1,0 +1,30 @@
+groups:
+  - name: netguard-log-pipeline
+    rules:
+      - alert: NetGuardLokiIngestionRejected
+        expr: >-
+          sum(increase(loki_discarded_samples_total{
+          reason=~"rate_limited|per_stream_rate_limit|stream_limit"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Loki is rejecting security events
+          description: >-
+            Loki's ingestion protection engaged. Investigate an alert flood or
+            an undersized rate limit before security-event visibility is lost.
+
+      # cAdvisor is intentionally profile-gated because it is privileged. This
+      # rule becomes active when operators start the stack with that profile.
+      - alert: NetGuardLokiFilesystemPressure
+        expr: >-
+          100 * container_fs_usage_bytes{name="netguard-loki"}
+          / clamp_min(container_fs_limit_bytes{name="netguard-loki"}, 1) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Loki container filesystem usage is above 80 percent
+          description: >-
+            Check the Loki volume and retention compactor before log ingestion
+            is interrupted. This signal requires the opt-in cAdvisor profile.

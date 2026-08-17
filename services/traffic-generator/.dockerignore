@@ -1,0 +1,5 @@
+# Send only the files consumed by this Dockerfile to the daemon. This prevents
+# local artifacts or future service-local secrets entering the build context.
+**
+!Dockerfile
+!generator.py

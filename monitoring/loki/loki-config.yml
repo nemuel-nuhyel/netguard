@@ -23,6 +23,14 @@ query_range:
         enabled: true
         max_size_mb: 100
 
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 10
+  delete_request_store: filesystem
+
 schema_config:
   configs:
     - from: 2024-01-01
@@ -40,5 +48,15 @@ ruler:
       directory: /loki/rules
 
 limits_config:
+  # Bound an alert flood before it can exhaust the single-node lab. Loki emits
+  # discarded-sample metrics when these limits engage; Prometheus alerts on it.
+  ingestion_rate_strategy: global
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 8
+  per_stream_rate_limit: 3MB
+  per_stream_rate_limit_burst: 15MB
+  max_global_streams_per_user: 1000
+  max_line_size: 256KB
   reject_old_samples: true
   reject_old_samples_max_age: 168h
+  retention_period: 168h
