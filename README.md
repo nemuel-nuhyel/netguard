@@ -8,9 +8,9 @@
 ![false positives 0](https://img.shields.io/badge/false%20positives-0-3fb950)
 ![ruleset ET Open 52,328 rules](https://img.shields.io/badge/ruleset-ET%20Open%20%C2%B7%2052%2C328%20rules-2dd4bf)
 
-NetGuard is a full Suricata IDS lab — WireGuard ingress, segmented Docker networks, Loki/Prometheus/Grafana observability — built around the one thing most IDS projects skip: **proving the detection works.**
+NetGuard is a full Suricata IDS lab — WireGuard ingress, segmented Docker networks, Loki/Prometheus/Grafana observability  built around the one thing most IDS projects skip: **proving the detection works.**
 
-A dashboard lighting up is not evidence. So NetGuard launches a labeled catalogue of fourteen traffic patterns at a monitored target — ten real attack techniques mapped to MITRE ATT&CK, four benign controls designed to look like attacks — joins the alerts Suricata actually produced back against that catalogue, and prints a **scorecard**: recall, precision, false positives and mean-time-to-detect, stamped with the exact content hash of the ruleset that produced them. CI re-runs the whole thing on every pull request and fails the build if the number moves the wrong way.
+A dashboard lighting up is not evidence. So NetGuard launches a labeled catalogue of fourteen traffic patterns at a monitored target  ten real attack techniques mapped to MITRE ATT&CK, four benign controls designed to look like attacks joins the alerts Suricata actually produced back against that catalogue, and prints a **scorecard**: recall, precision, false positives and mean-time-to-detect, stamped with the exact content hash of the ruleset that produced them. CI re-runs the whole thing on every pull request and fails the build if the number moves the wrong way.
 
 **Stack:** Docker Compose · WireGuard · Suricata 7 · Emerging Threats Open · Loki · Promtail · Prometheus · Grafana · GitHub Actions
 
@@ -28,7 +28,7 @@ One command launches the attack catalogue, scores it, and gates it against the c
 
 ## The result
 
-Latest scored run — and the same catalogue is re-run and re-scored on a GitHub Actions runner for every pull request:
+Latest scored run  and the same catalogue is re-run and re-scored on a GitHub Actions runner for every pull request:
 
 | Metric | Value | |
 |---|---|---|
@@ -89,7 +89,7 @@ The four negative controls exist to catch the opposite failure. Each deliberatel
                           └─────────────────┘
 ```
 
-**Capture.** Suricata joins the monitored app's network namespace (`network_mode: service:monitored-app`) and inspects its `eth0`. It therefore sees exactly the traffic reaching the protected asset, identically on Linux, Windows and macOS — no host-mode caveats. `HOME_NET` is scoped to a single address, `10.10.0.20/32`, which is the detail that makes the whole thing work: the in-lab attacker falls into `EXTERNAL_NET`, so Emerging Threats' `$EXTERNAL_NET → $HTTP_SERVERS` rules — the bulk of its web coverage — fire against it exactly as they would against an internet-borne attacker.
+**Capture.** Suricata joins the monitored app's network namespace (`network_mode: service:monitored-app`) and inspects its `eth0`. It therefore sees exactly the traffic reaching the protected asset, identically on Linux, Windows and macOS  no host-mode caveats. `HOME_NET` is scoped to a single address, `10.10.0.20/32`, which is the detail that makes the whole thing work: the in-lab attacker falls into `EXTERNAL_NET`, so Emerging Threats' `$EXTERNAL_NET → $HTTP_SERVERS` rules — the bulk of its web coverage — fire against it exactly as they would against an internet-borne attacker.
 
 **Segmentation.** Three bridge networks with static addressing, and the isolation is structural rather than advisory:
 
@@ -99,9 +99,9 @@ The four negative controls exist to catch the opposite failure. Each deliberatel
 | `netguard-monitor` | Observability | Loki, Promtail, Prometheus, Grafana, cAdvisor (opt-in) |
 | `netguard-mgmt` | Operator ingress | WireGuard gateway, Grafana |
 
-The attack simulator is attached to `netguard-lab` only. It has no route to the monitoring plane — it cannot reach the evidence of its own activity.
+The attack simulator is attached to `netguard-lab` only. It has no route to the monitoring plane it cannot reach the evidence of its own activity.
 
-**Data path.** The traffic generator emits benign HTTP/DNS/TCP probes on a ten-second loop. Under `profile: attack`, the simulator launches the catalogue from `10.10.0.40`. Suricata writes structured events to `eve.json` in a shared volume; Promtail tails it and parses `event_type`, `src_ip`, `dest_ip`, `dest_port`, `proto` and severity into Loki; Grafana renders alert, HTTP, DNS and severity panels over Loki, and container CPU/memory plus scrape health over Prometheus. Prometheus additionally evaluates alert rules for Loki ingestion rejection and filesystem pressure — a monitoring platform that goes blind under load should say so.
+**Data path.** The traffic generator emits benign HTTP/DNS/TCP probes on a ten-second loop. Under `profile: attack`, the simulator launches the catalogue from `10.10.0.40`. Suricata writes structured events to `eve.json` in a shared volume; Promtail tails it and parses `event_type`, `src_ip`, `dest_ip`, `dest_port`, `proto` and severity into Loki; Grafana renders alert, HTTP, DNS and severity panels over Loki, and container CPU/memory plus scrape health over Prometheus. Prometheus additionally evaluates alert rules for Loki ingestion rejection and filesystem pressure a monitoring platform that goes blind under load should say so.
 
 ---
 
@@ -119,7 +119,7 @@ docker compose up -d --build suricata traffic-generator
 SCENARIO=all ./scripts/run-catalogue.sh
 ```
 
-That writes `runs/<timestamp>/{manifest.json, eve.json, scorecard.json}` and prints the table above — roughly ten minutes from `git clone` to reading your own score.
+That writes `runs/<timestamp>/{manifest.json, eve.json, scorecard.json}` and prints the table above roughly ten minutes from `git clone` to reading your own score.
 
 `docker compose up` on its own stays **benign**: the attack simulator is profile-gated and never starts unless you ask for it. Run a subset with `SCENARIO=A01,A04,A09`.
 
@@ -137,7 +137,7 @@ Grafana is on `http://127.0.0.1:3000` locally, or `http://10.50.0.20:3000` for W
 
 ### The catalogue is the test spec
 
-`services/attack-sim/catalogue.py` defines fourteen entries. Each pairs a technique with its ATT&CK mapping, the driver that produces the traffic, and a matcher describing what a competent ruleset is *expected* to fire — a set of signature substrings and Suricata classtypes.
+`services/attack-sim/catalogue.py` defines fourteen entries. Each pairs a technique with its ATT&CK mapping, the driver that produces the traffic, and a matcher describing what a competent ruleset is *expected* to fire  a set of signature substrings and Suricata classtypes.
 
 | ID | Technique | ATT&CK | Driver |
 |---|---|---|---|
@@ -179,7 +179,7 @@ Three properties make the number trustworthy rather than merely produced.
 
 **Liveness rules are excluded structurally.** Four deliberately trivial rules (sids `1000001`–`1000004`) match the built-in traffic generator's own user agent, `/admin` probe, `example.com` lookup and port-8080 probe. They prove the capture → alert → Loki → Grafana path is alive. They live in `demo.rules`, the scorer excludes those sids from every metric, and `scripts/check-demo-rules.sh` fails CI if one ever migrates into `local.rules` or drifts out of sync with the scorer's exclusion list. Pipeline liveness and detection capability are measured separately because they are different things.
 
-The scoring logic is pure over parsed inputs, so all fourteen unit tests — including the `INVALID_RUN` path — run in milliseconds with no Docker at all.
+The scoring logic is pure over parsed inputs, so all fourteen unit tests — including the `INVALID_RUN` path run in milliseconds with no Docker at all.
 
 ### Three rule layers
 
@@ -209,7 +209,7 @@ alert http $EXTERNAL_NET any -> $HTTP_SERVERS any (
   classtype:policy-violation; sid:1000020; rev:1;)
 ```
 
-Neither matches the `/beacon` or `/upload` path the simulator happens to use. A rule that matches its own test harness proves nothing; both of these would fire on traffic the simulator never sent. The `detection_filter` on sid 1000010 is what separates a beacon from a single request, and the `Content-Length` bound on sid 1000020 is why N02 — a large legitimate *download*, a big response rather than a big request body — stays clean.
+Neither matches the `/beacon` or `/upload` path the simulator happens to use. A rule that matches its own test harness proves nothing; both of these would fire on traffic the simulator never sent. The `detection_filter` on sid 1000010 is what separates a beacon from a single request, and the `Content-Length` bound on sid 1000020 is why N02  a large legitimate *download*, a big response rather than a big request body  stays clean.
 
 ### The baseline gate
 
@@ -249,17 +249,17 @@ Install the local mirror with `pipx install pre-commit && pre-commit install`. E
 
 **Exposure.** Prometheus and Grafana publish on `127.0.0.1` only, never the LAN. Operator access is through the WireGuard tunnel to Grafana's private management address, or an SSH forward.
 
-**Supply chain.** Every image is pinned. The WireGuard container — the one holding `NET_ADMIN` and `SYS_MODULE` — is pinned by **digest**, because a floating tag under host-network capabilities is the worst possible place to accept drift. Trivy scans in CI.
+**Supply chain.** Every image is pinned. The WireGuard container — the one holding `NET_ADMIN` and `SYS_MODULE` is pinned by **digest**, because a floating tag under host-network capabilities is the worst possible place to accept drift. Trivy scans in CI.
 
 **Blast radius.** cAdvisor requires `privileged` and a host-root mount, so it is profile-gated, off by default, mounted read-only, and documented as an accepted isolated risk rather than buried in a service list.
 
-**Log-pipeline integrity.** Loki has seven-day retention and bounded ingestion; Prometheus alerts on discarded samples and on filesystem pressure. An attacker who floods alerts to bury a real one degrades precision — and the scorecard measures precision, so noise lowers the score rather than inflating it.
+**Log-pipeline integrity.** Loki has seven-day retention and bounded ingestion; Prometheus alerts on discarded samples and on filesystem pressure. An attacker who floods alerts to bury a real one degrades precision  and the scorecard measures precision, so noise lowers the score rather than inflating it.
 
 ### Threat model
 
 Two directions, because a monitoring platform has two.
 
-**Adversary A — the intruder NetGuard must detect.** Modeled on ATT&CK, and every row is a measured catalogue entry rather than an assumption:
+**Adversary A  the intruder NetGuard must detect.** Modeled on ATT&CK, and every row is a measured catalogue entry rather than an assumption:
 
 | Tactic | Behaviour | Catalogue | Result |
 |---|---|---|---|
@@ -304,7 +304,7 @@ That last row is the one specific to this project: the integrity of the number i
 
 **Decision.** Run Suricata inside the monitored app's network namespace and inspect its `eth0`.
 
-**Consequences.** Capture behaves identically across Linux, Windows and macOS, and the sensor is scoped to the asset it protects — the correct scope for a single-target lab. The accepted trade-off is that traffic never reaching the monitored app, such as DNS to the resolver, is out of view; this is why A08 is a documented miss. Multi-target capture remains an option for a Linux-host deployment.
+**Consequences.** Capture behaves identically across Linux, Windows and macOS, and the sensor is scoped to the asset it protects the correct scope for a single-target lab. The accepted trade-off is that traffic never reaching the monitored app, such as DNS to the resolver, is out of view; this is why A08 is a documented miss. Multi-target capture remains an option for a Linux-host deployment.
 
 ### <a id="adr-002"></a>ADR-002 — ET Open alongside author rules
 
@@ -354,7 +354,7 @@ That last row is the one specific to this project: the integrity of the number i
 
 ### <a id="adr-008"></a>ADR-008 — Loopback publication for Prometheus and Grafana
 
-**Context.** Binding `0.0.0.0` with weak or absent authentication exposes every metric and the admin API to anyone on the same network — a café, a campus, a shared flat.
+**Context.** Binding `0.0.0.0` with weak or absent authentication exposes every metric and the admin API to anyone on the same network a café, a campus, a shared flat.
 
 **Decision.** Bind both to `127.0.0.1` and reach them through WireGuard or an SSH forward. Move Grafana's admin password to a Docker secret.
 
@@ -373,7 +373,7 @@ That last row is the one specific to this project: the integrity of the number i
 Stated plainly, because a measurement without its bounds is marketing:
 
 - **The catalogue is fixed and known; real attackers improvise.** Recall against it is an upper bound on real-world recall, not an estimate of it.
-- **Capture is scoped to the monitored asset.** Traffic that never reaches it is invisible by design — which is precisely what A08 demonstrates.
+- **Capture is scoped to the monitored asset.** Traffic that never reaches it is invisible by design which is precisely what A08 demonstrates.
 - **ET Open is a subset of ET Pro.** Some techniques it misses would be caught by the paid ruleset.
 - **A single-target lab has neither production base rates nor production traffic mix**, so the precision figure is optimistic.
 - **The pin is by content, not by version, and CI re-fetches.** An upstream ruleset change that reduces coverage fails the gate until it is investigated or re-pinned: reproducible, but not hermetic.
